@@ -1,0 +1,18 @@
+{
+  "name": "adthrive",
+  "version": "1.0.0",
+  "description": "adthrive code challenge",
+  "main": "index.js",
+  "scripts": {
+    "start": "node index.js",
+    "json": "node json.js",
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "author": "",
+  "license": "ISC",
+  "dependencies": {
+    "csv-parser": "^3.0.0",
+    "csv-writer": "^1.6.0",
+    "neat-csv": "^6.0.1"
+  }
+}
