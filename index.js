@@ -1,9 +1,8 @@
 
 const fs = require('fs');
-const path = require('path');
+
 const neatCsv = require('neat-csv')
-const topPosts = require('./topPosts.js');
-const helpers = require('./helpers.js')
+const filters = require('./filters.js');
 
 const createCsvWriter = require('csv-writer').createObjectCsvWriter
 
@@ -11,11 +10,12 @@ const topPostsArray = [];
 const otherPostsArray = [];
 const dailyTopPostsArray = [];
 
-const POSTS_CSV = path.join(__dirname, "./output/posts.csv");
-const TOP_POSTS_CSV = './output/top_posts.csv'
-const OTHER_POSTS_CSV = './output/other_posts.csv'
-const DAILY_TOP_POSTS_CSV = './output/daily_top_posts.csv'
-
+const {
+  POSTS_CSV,
+  TOP_POSTS_CSV,
+  OTHER_POSTS_CSV,
+  DAILY_TOP_POSTS_CSV
+} = require('./constants.js')
 
 
 
@@ -25,30 +25,46 @@ const parseCsv = async() => {
       return console.error(err)
     }
     const parsedData = await neatCsv(data);
-    const header = {id: 'id', title: 'id'}
-    topPosts.createArrays(topPostsArray, otherPostsArray, parsedData);
-    const filteredTopPostsArray = filterTopPostsArray(topPostsArray);
+    const header = detailedMode(process.argv[2])
+    createArrays(parsedData);
+    const filteredTopPostsArray = await filterTopPostsArray(topPostsArray);
     await createCsvFiles(filteredTopPostsArray, TOP_POSTS_CSV, header);
     await createCsvFiles(otherPostsArray, OTHER_POSTS_CSV, header)    
     await createCsvFiles(sortDailyTopPosts(filteredTopPostsArray), DAILY_TOP_POSTS_CSV, header);
   })
 }
 
-const createCsvFiles  = (data, fileName, headerOptions)  => {
+const detailedMode = (arg) => {
+  return arg != 'detailed' ? [{id: 'id', title: 'id'}] : [
+    {id: 'id', title: 'id'},
+    {id: 'title', title: 'Title'},
+    {id: 'privacy', title: 'Privacy'},
+    {id: 'likes', title: 'Likes'},
+    {id: 'views', title: 'Views'},
+    {id: 'comments', title: 'Comments'},
+    {id: 'timestamp', title: 'Timestamp'}]
+}
+
+const createCsvFiles  = async(data, fileName, headerOptions)  => {
   const csvWriter = createCsvWriter({
     path: `${fileName}`,
-    header: [
-      headerOptions,
-    ]
+    header: headerOptions,
   });
-  csvWriter
-    .writeRecords(data)
+  csvWriter.writeRecords(data)
+    .then(() => {console.log('files written successfully')})
+    .catch(error => {console.log(error)})
+  }
+
+  const createArrays = (data) => {
+    data.map((row) =>{
+      row.privacy == 'public' ? topPostsArray.push(row) : otherPostsArray.push(row);
+    })
   }
 
   const filterTopPostsArray = (array) => {
-     const filteredComments = topPosts.checkComments(array);
-     const filteredViews = topPosts.checkViews(filteredComments);
-     const finalFilteredArray = topPosts.checkTitleLength(filteredViews);
+     const filteredComments = filters.filterByComments(array);
+     const filteredViews = filters.filterByViews(filteredComments);
+     const finalFilteredArray = filters.filterByTitleLength(filteredViews);
     return finalFilteredArray;
   }
 
@@ -74,12 +90,6 @@ const createCsvFiles  = (data, fileName, headerOptions)  => {
     }
     return dailyTopPostsArray
   }
-
-
-  exports.TOP_POSTS_CSV = TOP_POSTS_CSV,
-  exports.OTHER_POSTS_CSV = OTHER_POSTS_CSV,
-  exports.DAILY_TOP_POSTS_CSV = DAILY_TOP_POSTS_CSV,
-
 
   parseCsv();
 
